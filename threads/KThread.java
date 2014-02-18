@@ -53,6 +53,7 @@ public class KThread {
 	    currentThread = this;
 	    tcb = TCB.currentTCB();
 	    name = "main";
+	    KThread joinedTo = null;
 	    restoreState();
 
 	    createIdleThread();
@@ -193,8 +194,16 @@ public class KThread {
 
 
 	currentThread.status = statusFinished;
+
+	while(ThreadQueue.nextThread!=null)
+		if(this.joinedTo() == currentThread())
+			ThreadQueue.pop().wake();
 	
+	Machine.interrupt().enable();
 	sleep();
+	
+
+	
     }
 
     /**
@@ -276,6 +285,19 @@ public class KThread {
 	Lib.debug(dbgThread, "Joining to thread: " + toString());
 
 	Lib.assertTrue(this != currentThread);
+	
+	//Our implementation
+	Machine.interrupt().disable();
+	if(this == currentThread())
+		return;
+
+	if(this.status==statusFinished)
+		return;
+
+	ThreadQueue.add(this);
+	this.joinedTo = currentThread();
+	Machine.interrupt().restore(intStatus);
+	this.sleep();
 
     }
 
